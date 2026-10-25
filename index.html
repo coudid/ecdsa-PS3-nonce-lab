@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111827">
+    <meta name="description" content="Laboratoire local pour comprendre la réutilisation du nonce ECDSA, l'incident de la PlayStation 3 et la mitigation RFC 6979.">
+    <title>ECDSA — laboratoire de réutilisation du nonce</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#" aria-label="ECDSA Lab, accueil">
+          <span class="brand-mark" aria-hidden="true">E</span>
+          <span>ECDSA <span class="brand-muted">/ LAB</span></span>
+        </a>
+        <span class="local-badge"><span class="status-dot"></span>Exécution locale</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Cryptographie appliquée · signatures numériques</p>
+        <h1>Un nonce réutilisé.<br><span>Une clé privée compromise.</span></h1>
+        <p class="hero-copy">
+          Explorez le défaut de génération du nonce ECDSA derrière l’incident de signature
+          de la PlayStation 3, puis comparez-le à une génération déterministe selon RFC&nbsp;6979.
+        </p>
+        <div class="scope-note">
+          <strong>Laboratoire pédagogique isolé.</strong>
+          Toutes les clés et signatures sont générées dans votre navigateur. Cette démonstration
+          utilise P-256 pour illustrer le mécanisme; elle ne reproduit pas la courbe, le firmware
+          ni le protocole exacts de Sony.
+        </div>
+      </section>
+
+      <section class="panel setup-panel" aria-labelledby="setup-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">01 / Données de démonstration</p>
+            <h2 id="setup-title">Deux messages, une même clé</h2>
+          </div>
+          <span class="curve-tag">ECDSA · NIST P-256</span>
+        </div>
+        <p class="section-copy">
+          Modifiez les messages si vous le souhaitez. Ils sont hachés avec SHA-256 et ne quittent
+          jamais cette page.
+        </p>
+        <div class="message-grid">
+          <label class="field">
+            <span>Message 1</span>
+            <input id="message-one" type="text" value="Signer la mise à jour officielle" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Message 2</span>
+            <input id="message-two" type="text" value="Autoriser le lancement du logiciel" autocomplete="off">
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="run-vulnerable" class="button button-danger" type="button">
+            Simuler le nonce réutilisé
+          </button>
+          <button id="run-patched" class="button button-primary" type="button">
+            Comparer avec RFC 6979
+          </button>
+          <button id="new-key" class="button button-secondary" type="button">
+            Nouvelle clé de démonstration
+          </button>
+        </div>
+        <p id="lab-status" class="status-message" role="status" aria-live="polite">
+          Choisissez une démonstration pour générer une clé et des signatures temporaires.
+        </p>
+      </section>
+
+      <div class="results-grid">
+        <section class="panel result-panel vulnerable-panel" aria-labelledby="vulnerable-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow danger-eyebrow">02 / Version vulnérable</p>
+              <h2 id="vulnerable-title">Nonce répété</h2>
+            </div>
+            <span class="state-pill state-danger">À risque</span>
+          </div>
+          <p class="section-copy">
+            Une mauvaise implémentation réutilise accidentellement le même <code>k</code> pour
+            deux messages distincts. L’égalité de <code>r</code> rend le problème visible.
+          </p>
+          <div class="equation-card">
+            <span class="equation-label">Récupération modulaire</span>
+            <code>k = (z₁ − z₂) · (s₁ − s₂)<sup>−1</sup> mod n</code>
+            <code>d = (s₁ · k − z₁) · r<sup>−1</sup> mod n</code>
+          </div>
+          <div class="output-list" aria-live="polite">
+            <div class="output-row"><span>Signature 1 · (r, s)</span><code id="vuln-sig-one">—</code></div>
+            <div class="output-row"><span>Signature 2 · (r, s)</span><code id="vuln-sig-two">—</code></div>
+            <div class="output-row"><span>r identique</span><strong id="vuln-r-match">—</strong></div>
+            <div class="output-row"><span>Clé privée récupérée</span><code id="recovered-key">—</code></div>
+            <div class="output-row"><span>Clé récupérée = clé de démonstration</span><strong id="key-match">—</strong></div>
+            <div class="output-row"><span>Signature forgée vérifiée</span><strong id="forgery-valid">—</strong></div>
+          </div>
+          <p class="panel-footnote">
+            La clé affichée est une clé aléatoire temporaire créée pour cette démonstration.
+            Ne saisissez ni clé, ni signature réelle.
+          </p>
+        </section>
+
+        <section class="panel result-panel patched-panel" aria-labelledby="patched-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow success-eyebrow">03 / Version corrigée</p>
+              <h2 id="patched-title">Nonce déterministe</h2>
+            </div>
+            <span class="state-pill state-success">RFC 6979</span>
+          </div>
+          <p class="section-copy">
+            RFC 6979 dérive <code>k</code> de la clé privée et du haché du message avec HMAC.
+            Pas de générateur aléatoire externe pour le nonce de signature.
+          </p>
+          <div class="equation-card success-card">
+            <span class="equation-label">Comportement vérifié</span>
+            <code>même clé + message différent → nonce différent</code>
+            <code>même clé + même message → même signature</code>
+          </div>
+          <div class="output-list" aria-live="polite">
+            <div class="output-row"><span>Signature 1 valide</span><strong id="patched-valid-one">—</strong></div>
+            <div class="output-row"><span>Signature 2 valide</span><strong id="patched-valid-two">—</strong></div>
+            <div class="output-row"><span>Nonces différents pour les messages saisis</span><strong id="patched-k-diff">—</strong></div>
+            <div class="output-row"><span>Réutilisation visible de r</span><strong id="patched-r-match">—</strong></div>
+            <div class="output-row"><span>Répétition du même message reproductible</span><strong id="patched-repeat">—</strong></div>
+          </div>
+          <p class="panel-footnote">
+            La répétition déterministe pour un même message est attendue; le défaut est la
+            réutilisation du nonce pour des messages différents.
+          </p>
+        </section>
+      </div>
+
+      <section class="panel explanation-panel" aria-labelledby="explanation-title">
+        <p class="eyebrow">À retenir</p>
+        <h2 id="explanation-title">Ce que montre l’incident PS3</h2>
+        <div class="takeaway-grid">
+          <article>
+            <span class="takeaway-number">01</span>
+            <h3>Le nonce doit rester secret et unique</h3>
+            <p>Pour une clé ECDSA, réutiliser le même nonce sur des messages différents peut révéler la clé privée.</p>
+          </article>
+          <article>
+            <span class="takeaway-number">02</span>
+            <h3>Une signature compromise ne se « répare » pas</h3>
+            <p>En cas d’exposition réelle, remplacez la clé et révoquez ou renouvelez les signatures et identifiants associés.</p>
+          </article>
+          <article>
+            <span class="takeaway-number">03</span>
+            <h3>Utilisez une bibliothèque cryptographique</h3>
+            <p>En production, préférez une API maintenue et correctement configurée. Le code pédagogique de cette page n’est pas une bibliothèque de sécurité.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Laboratoire éducatif · ECDSA P-256 · SHA-256 · RFC 6979</p>
+      <p>Aucun envoi vers l’extérieur · Aucune clé persistée</p>
+    </footer>
+  </body>
+</html>
